@@ -4,8 +4,37 @@ const userInput = document.getElementById('userInput') || document.getElementByI
 const sendButton = document.getElementById('sendButton');
 
 // DeepSeek API 配置
-const DEEPSEEK_API_KEY = 'sk-80fdb8dcd8514e7d9e76e67cf7397a49';
+// 安全提示：纯前端项目无法完全隐藏 API Key
+// 建议：1) 创建 config.js 配置文件  2) 使用后端代理保护 API Key
+let DEEPSEEK_API_KEY = '';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+// 默认 API Key（仅用于演示，生产环境建议替换成自己的）
+// 注意：如果配置了 config.js，将优先使用 config.js 中的配置
+const DEFAULT_API_KEY = 'sk-80fdb8dcd8514e7d9e76e67cf7397a49';
+
+// 尝试从配置文件加载 API Key
+function loadConfig() {
+    // 1. 优先从 config.js 加载
+    if (window.APP_CONFIG && window.APP_CONFIG.DEEPSEEK_API_KEY) {
+        DEEPSEEK_API_KEY = window.APP_CONFIG.DEEPSEEK_API_KEY;
+        console.log('✅ 从配置文件加载 API Key');
+    }
+    // 2. 其次从 localStorage 加载（用户手动设置的）
+    else if (localStorage.getItem('DEEPSEEK_API_KEY')) {
+        DEEPSEEK_API_KEY = localStorage.getItem('DEEPSEEK_API_KEY');
+        console.log('✅ 从本地存储加载 API Key');
+    }
+    // 3. 最后使用默认 Key
+    else {
+        DEEPSEEK_API_KEY = DEFAULT_API_KEY;
+        console.log('⚠️ 使用默认 API Key（建议创建 config.js 配置自己的 Key）');
+    }
+}
+
+// 页面加载时尝试加载配置
+document.addEventListener('DOMContentLoaded', loadConfig);
+setTimeout(loadConfig, 100);
 
 // 发送消息函数 - 统一入口
 async function sendMessage() {
