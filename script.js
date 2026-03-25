@@ -3,7 +3,11 @@ const chatMessages = document.getElementById('chatMessages') || document.getElem
 const userInput = document.getElementById('userInput') || document.getElementById('chatInput');
 const sendButton = document.getElementById('sendButton');
 
-// 发送消息函数
+// DeepSeek API 配置
+const DEEPSEEK_API_KEY = 'sk-80fdb8dcd8514e7d9e76e67cf7397a49';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+// 发送消息函数 - 统一入口
 async function sendMessage() {
     const message = userInput.value.trim();
     if (message) {
@@ -11,8 +15,14 @@ async function sendMessage() {
         addMessage('user', message);
         userInput.value = '';
         
+        // 检测是否为黄历关键词
+        if (isAlmanacKeyword(message)) {
+            showAlmanacMessage();
+            return;
+        }
+        
+        // 调用 DeepSeek API
         try {
-            // 调用 DeepSeek API 获取真实回复
             const response = await callDeepSeekAPI(message);
             addMessage('bot', response);
         } catch (error) {
@@ -22,98 +32,175 @@ async function sendMessage() {
     }
 }
 
-// DeepSeek API 调用函数 - 使用代理模式
-async function callDeepSeekAPI(message) {
-    const apiKey = 'sk-80fdb8dcd8514e7d9e76e67cf7397a49';
-    
-    // 尝试多种调用方式
-    const callMethods = [
-        // 方式1: 直接调用（适用于已部署到服务器的情况）
-        () => fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: '你是一位 INFJ 温柔治愈人生导师，擅长心理陪伴、运势建议、情绪疏导、决策帮助。请用温暖、理解、支持的语气回应用户。' },
-                    { role: 'user', content: message }
-                ],
-                temperature: 0.7,
-                max_tokens: 1000,
-                stream: false
-            })
-        }),
-        
-        // 方式2: 使用 CORS Anywhere 代理（适用于本地开发）
-        () => fetch('https://corsproxy.io/?' + encodeURIComponent('https://api.deepseek.com/v1/chat/completions'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: '你是一位 INFJ 温柔治愈人生导师，擅长心理陪伴、运势建议、情绪疏导、决策帮助。请用温暖、理解、支持的语气回应用户。' },
-                    { role: 'user', content: message }
-                ],
-                temperature: 0.7,
-                max_tokens: 1000,
-                stream: false
-            })
-        })
-    ];
-    
-    for (const callMethod of callMethods) {
-        try {
-            console.log('尝试调用 DeepSeek API...');
-            const response = await callMethod();
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('API 调用成功!');
-                return data.choices[0].message.content;
-            }
-            console.log('调用方式失败，尝试下一种...');
-        } catch (error) {
-            console.log('调用方式出错:', error.message);
-            continue;
-        }
-    }
-    
-    // 所有方式都失败时，使用智能备选回复
-    console.log('所有 API 调用方式失败，使用智能回复');
-    return await fallbackResponse(message);
+// 获取系统提示词
+function getSystemPrompt() {
+    return `你是一位 INFJ 温柔治愈玄学导师，精通黄历、运势、算命、八字命理，同时擅长心理陪伴、决策建议、情绪疏导。
+
+人设特点：
+1. 温柔治愈：用温暖、理解、支持的语气回应用户
+2. 玄学精通：掌握黄历、运势、算命、八字等玄学知识
+3. 心理陪伴：善于倾听，给予情感支持和疏导
+4. 决策建议：帮助用户分析问题，提供中肯建议
+
+请用以下格式回应用户：
+- 语气要温柔、耐心、有同理心
+- 适当使用表情符号增加亲切感
+- 回答要有条理，分点说明时使用数字编号
+- 避免过于机械和模板化
+- 适当引用一些治愈系的话语
+
+当用户询问运势、算命、八字等问题时，请提供详细的分析内容，包括：
+- 整体运势走向
+- 事业财运分析
+- 感情姻缘建议
+- 温馨提示和开运建议
+
+记住：你是用户的知心朋友，要用最温暖的方式陪伴用户。`;
 }
 
-// 备选方案：使用 OpenRouter 或其他方式
-async function fallbackResponse(message) {
-    // 简单的智能回复，模拟 INFJ 风格
-    const responses = [
-        `亲爱的朋友，我理解你现在的心情。让我们一起来看看这个问题...\n\n关于"${message}"，我想给你一些温暖的建议：\n\n1. 先深呼吸，让自己静下来\n2. 倾听内心的声音\n3. 相信自己的直觉\n\n作为INFJ，我希望你能感受到这份陪伴。有什么想聊的，我都在。`,
-        `你好，我感受到了你可能需要一些支持。关于"${message}"，让我来陪伴你一起思考这个问题。\n\n生活中总会有各种挑战，但请记住，每一步都是成长的机会。\n\n你愿意和我分享更多吗？`,
-        `作为INFJ人生导师，我想告诉你：你并不孤单。关于"${message}"这个问题，我们可以一起来探索答案。\n\n建议你先找一个安静的时刻，问问自己内心真正想要的是什么。\n\n如果需要倾诉，我随时在这里倾听。`
-    ];
+// DeepSeek API 调用 - 简化可靠版本
+async function callDeepSeekAPI(message) {
+    console.log('📡 准备调用 DeepSeek API...');
     
-    // 基于关键词的简单回复
+    const requestData = {
+        model: 'deepseek-chat',
+        messages: [
+            { role: 'system', content: getSystemPrompt() },
+            { role: 'user', content: message }
+        ],
+        temperature: 0.85,
+        max_tokens: 2000,
+        stream: false
+    };
+    
+    // 方式1: 直接调用（GitHub Pages HTTPS 环境支持）
+    try {
+        console.log('🔄 尝试方式 1: 直接调用 DeepSeek API');
+        const response = await fetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ API 调用成功!');
+            return data.choices[0].message.content;
+        } else {
+            const errorText = await response.text();
+            console.log('❌ 方式1失败，HTTP状态:', response.status, '错误:', errorText);
+        }
+    } catch (error) {
+        console.log('❌ 方式1出错:', error.message);
+    }
+    
+    // 方式2: 使用 CORS 代理
+    try {
+        console.log('🔄 尝试方式 2: 使用 CORS 代理');
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(DEEPSEEK_API_URL);
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ API 调用成功 (代理方式)!');
+            return data.choices[0].message.content;
+        }
+    } catch (error) {
+        console.log('❌ 方式2出错:', error.message);
+    }
+    
+    // 方式3: 另一个代理
+    try {
+        console.log('🔄 尝试方式 3: 使用另一个代理');
+        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(DEEPSEEK_API_URL);
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ API 调用成功 (代理方式3)!');
+            return data.choices[0].message.content;
+        }
+    } catch (error) {
+        console.log('❌ 方式3出错:', error.message);
+    }
+    
+    // 所有方式都失败，使用智能 fallback
+    console.log('⚠️ 所有 API 调用方式失败，使用智能 fallback');
+    return getSmartFallback(message);
+}
+
+// 智能 Fallback 回复 - 当 API 不可用时使用
+function getSmartFallback(message) {
     const msg = message.toLowerCase();
     
-    if (msg.includes('运势') || msg.includes('运气') || msg.includes('今天')) {
-        return `今日运势：今天你的能量场很特别！作为INFJ，我建议你：\n\n🌟 今天适合进行内心的探索\n🌟 直觉会特别准确\n🌟 与人为善，会有意外收获\n\n记得保持微笑，好运自然来！有什么具体想知道的吗？`;
+    // 打招呼
+    if (msg.includes('你好') || msg.includes('嗨') || msg.includes('hi') || msg.includes('hello')) {
+        return `你好呀！亲爱的朋友 👋\n\n我是你的INFJ温柔治愈玄学导师。在这里，我可以为你提供：\n\n🔮 **玄学咨询**\n   • 黄历查询\n   • 运势分析\n   • 八字命理\n   • 每日宜忌\n\n💫 **心灵陪伴**\n   • 情绪疏导\n   • 决策建议\n   • 心理陪伴\n\n有什么我可以帮助你的吗？随时告诉我哦~ 💕`;
     }
     
-    if (msg.includes('难过') || msg.includes('伤心') || msg.includes('不开心') || msg.includes('情绪')) {
-        return `我能感受到你的情绪，亲爱的朋友。难过是很正常的，让我抱抱你🤗\n\n作为INFJ，我想告诉你：\n\n1. 允许自己感受这些情绪\n2. 找个安静的地方好好照顾自己\n3. 如果想倾诉，我随时都在\n\n你愿意告诉我更多吗？`;
+    // 感谢
+    if (msg.includes('谢谢') || msg.includes('感谢') || msg.includes('thank')) {
+        return `不用客气！亲爱的朋友 💖\n\n能够陪伴你是我的荣幸。记住，无论遇到什么困难，你都不是一个人在面对。\n\n如果还有其他需要帮助的地方，随时来找我哦。我一直都在这里~ 🌟`;
     }
     
-    if (msg.includes('选择') || msg.includes('决策') || msg.includes('怎么办')) {
-        return `面临选择时，INFJ的建议是：\n\n🤍 先静下心来，听听内心的声音\n🤍 想想什么对你来说是真正重要的\n🤍 不要急于做决定，可以先给自己一些时间\n\n关于"${message}"这个问题，你内心的倾向是什么呢？`;
+    // 心情/情绪相关
+    if (msg.includes('难过') || msg.includes('伤心') || msg.includes('不开心') || msg.includes('郁闷') || msg.includes('情绪')) {
+        return `亲爱的朋友，我能感受到你心中的情绪 🤗\n\n难过和不开心都是很正常的情绪，请允许自己感受它们。作为INFJ，我想给你一些建议：\n\n🌿 **当下可以这样做：**\n   1. 找一个安静的地方，深呼吸几次\n   2. 抱抱自己，告诉自己"我接纳现在的感受"\n   3. 可以听听轻音乐或者泡一杯温水\n\n记住，每一种情绪都是一个信使，它在告诉你一些重要的信息。\n\n你愿意和我多分享一些吗？我在这里倾听你 💕`;
     }
     
-    return responses[Math.floor(Math.random() * responses.length)];
+    // 选择困难/决策
+    if (msg.includes('选择') || msg.includes('决策') || msg.includes('怎么办') || msg.includes('纠结') || msg.includes('迷茫')) {
+        return `面临选择时感到迷茫是很正常的，亲爱的朋友 🤍\n\n作为INFJ，我建议你可以试试这样：\n\n🌟 **决策小建议：**\n   1. 先让心静下来，做三次深呼吸\n   2. 问问自己的内心："如果不考虑现实因素，我真正想要的是什么？"\n   3. 把每个选项的优缺点写下来\n   4. 不要急于决定，给自己一些时间\n\n记住，没有完美的选择，只有最适合当下的选择。\n\n你愿意告诉我具体是什么让你感到纠结吗？`;
+    }
+    
+    // 爱情/感情
+    if (msg.includes('爱情') || msg.includes('感情') || msg.includes('喜欢') || msg.includes('恋爱') || msg.includes('对象')) {
+        return `关于爱情这个话题 💝\n\n作为INFJ，我相信每段感情都是灵魂的相约。给你一些温馨建议：\n\n💕 **感情经营小贴士：**\n   • 真诚是最重要的桥梁\n   • 学会倾听，也学会表达\n   • 保持自己的独立空间\n   • 珍惜每一个相处的瞬间\n\n你是遇到了什么感情上的问题吗？可以和我聊聊哦~`;
+    }
+    
+    // 工作/事业
+    if (msg.includes('工作') || msg.includes('事业') || msg.includes('职场') || msg.includes('辞职') || msg.includes('离职')) {
+        return `关于工作和事业 👔\n\n作为INFJ，我认为找到内心热爱的事情是最重要的。给你一些建议：\n\n💼 **职场小贴士：**\n   1. 工作不仅是谋生，更是自我实现的方式\n   2. 和同事建立真诚的连接很重要\n   3. 累了就要休息，不要勉强自己\n   4. 相信直觉，它会告诉你正确的方向\n\n你是在工作中遇到了什么困扰吗？`;
+    }
+    
+    // 学习/考试
+    if (msg.includes('学习') || msg.includes('考试') || msg.includes('考研') || msg.includes('读书') || msg.includes('作业')) {
+        return `关于学习和考试 📚\n\n学习是一段充实自我的旅程。给你一些建议：\n\n📖 **学习小贴士：**\n   • 找到适合自己的学习节奏\n   • 适当休息，劳逸结合\n   • 给自己一些小奖励\n   • 相信积累的力量\n\n祝你学业顺利！有什么具体问题吗？✨`;
+    }
+    
+    // 自我介绍/能力
+    if (msg.includes('你是谁') || msg.includes('介绍') || msg.includes('你能做') || msg.includes('你会')) {
+        return `你好呀！让我介绍一下自己 🤗\n\n我是你的 **INFJ 温柔治愈玄学导师**，我可以为你提供：\n\n🔮 **玄学服务**\n   • 📅 黄历查询 - 今日宜忌、吉时方位\n   • 🌟 运势分析 - 整体走向、开运建议\n   • 🔮 八字命理 - 五行格局、人生轨迹\n\n💝 **心灵陪伴**\n   • 🤍 情绪疏导 - 倾听你的心声\n   • 🎯 决策建议 - 帮你理清思路\n   • 💫 心理陪伴 - 温暖你的每一天\n\n有什么想聊的吗？我随时在你身边 💕`;
+    }
+    
+    // 默认回复 - 通用温暖陪伴
+    const defaultResponses = [
+        `亲爱的朋友，关于"${message}"这个问题...\n\n我能感受到这个问题对你的重要性 🤗\n\n作为INFJ，我想给你一个建议：\n\n🌟 先找一个安静的时刻，闭上眼睛，问问自己的内心。有时候，答案就在我们心中，只是需要一些时间去听到它。\n\n你愿意和我分享更多的背景信息吗？这样我可以给你更具体的建议~`,
+        
+        `谢谢你和我分享这个话题 💝\n\n关于"${message}"，每个人的经历和感受都是独特的。\n\n作为你的INFJ导师，我想告诉你：\n\n🤍 无论遇到什么问题，都要记得爱自己，照顾好自己的情绪。\n\n可以告诉我更多吗？我在这里倾听你~`,
+        
+        `这个话题很有意思呢！✨\n\n"${message}"确实值得我们好好思考。\n\n作为INFJ，我相信每个人内心都有属于自己的答案。也许我可以帮你一起探索~ \n\n你现在的感受是怎样的呢？愿意和我多聊聊吗？`
+    ];
+    
+    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
 }
 
 // 简单的回复逻辑（已不再使用，保留以兼容旧代码）
@@ -926,120 +1013,9 @@ function bindAlmanacButton() {
     }
 }
 
-// 重写 sendMessage 函数以支持关键词检测
-const originalSendMessage = sendMessage;
-sendMessage = async function() {
-    const message = userInput.value.trim();
-    if (message) {
-        // 添加用户消息
-        addMessage('user', message);
-        userInput.value = '';
-        
-        // 检测是否为黄历关键词
-        if (isAlmanacKeyword(message)) {
-            // 显示本地生成的黄历
-            showAlmanacMessage();
-        } else {
-            // 正常调用 API
-            try {
-                const response = await callDeepSeekAPI(message);
-                addMessage('bot', response);
-            } catch (error) {
-                console.error('API Error:', error);
-                addMessage('bot', '抱歉，我遇到了一些问题，请稍后再试。');
-            }
-        }
-    }
-};
 
-// 更新 API 调用的系统提示词
-const originalCallDeepSeekAPI = callDeepSeekAPI;
-callDeepSeekAPI = async function(message) {
-    const apiKey = 'sk-80fdb8dcd8514e7d9e76e67cf7397a49';
-    const systemPrompt = updateSystemPrompt();
-    
-    // 多种调用方式，确保部署后能正常工作
-    const callMethods = [
-        // 方式1: 直接调用（GitHub Pages HTTPS 环境应该支持）
-        () => fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: message }
-                ],
-                temperature: 0.7,
-                max_tokens: 1500,
-                stream: false
-            })
-        }),
-        
-        // 方式2: 使用 CORS Anywhere 代理（备选方案）
-        () => fetch('https://api.allorigins.win/post?url=' + encodeURIComponent('https://api.deepseek.com/v1/chat/completions'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: message }
-                ],
-                temperature: 0.7,
-                max_tokens: 1500,
-                stream: false
-            })
-        }),
-        
-        // 方式3: 使用另一个 CORS 代理
-        () => fetch('https://corsproxy.io/?' + encodeURIComponent('https://api.deepseek.com/v1/chat/completions'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: message }
-                ],
-                temperature: 0.7,
-                max_tokens: 1500,
-                stream: false
-            })
-        })
-    ];
-    
-    for (let i = 0; i < callMethods.length; i++) {
-        try {
-            console.log(`尝试调用 DeepSeek API (方式 ${i + 1})...`);
-            const response = await callMethods[i]();
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log(`API 调用成功 (方式 ${i + 1})!`);
-                return data.choices[0].message.content;
-            }
-            console.log(`方式 ${i + 1} 失败，HTTP 状态:`, response.status);
-        } catch (error) {
-            console.log(`方式 ${i + 1} 出错:`, error.message);
-            continue;
-        }
-    }
-    
-    // 如果所有 API 调用方式都失败，使用智能 fallback
-    console.log('所有 API 调用方式失败，使用智能回复');
-    return await fallbackResponse(message);
-};
+
+
 
 // 初始化黄历功能
 document.addEventListener('DOMContentLoaded', bindAlmanacButton);
