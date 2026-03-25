@@ -3,38 +3,14 @@ const chatMessages = document.getElementById('chatMessages') || document.getElem
 const userInput = document.getElementById('userInput') || document.getElementById('chatInput');
 const sendButton = document.getElementById('sendButton');
 
-// DeepSeek API 配置
-// 安全提示：纯前端项目无法完全隐藏 API Key
-// 建议：1) 创建 config.js 配置文件  2) 使用后端代理保护 API Key
-let DEEPSEEK_API_KEY = '';
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+// ==============================================
+// 直接调用硅基流动 API（支持 CORS）
+// ==============================================
+const SILICONFLOW_API_URL = 'https://api.siliconflow.cn/v1/chat/completions';
+const SILICONFLOW_API_KEY = 'sk-bzgfwivbbrufnxsnklkuwixbxkggwtqblrlkqefrtktotmrw';
+const MODEL_NAME = 'Qwen/Qwen2.5-7B-Instruct';
 
-// 默认 API Key（仅用于演示，生产环境建议替换成自己的）
-// 注意：如果配置了 config.js，将优先使用 config.js 中的配置
-const DEFAULT_API_KEY = 'sk-80fdb8dcd8514e7d9e76e67cf7397a49';
-
-// 尝试从配置文件加载 API Key
-function loadConfig() {
-    // 1. 优先从 config.js 加载
-    if (window.APP_CONFIG && window.APP_CONFIG.DEEPSEEK_API_KEY) {
-        DEEPSEEK_API_KEY = window.APP_CONFIG.DEEPSEEK_API_KEY;
-        console.log('✅ 从配置文件加载 API Key');
-    }
-    // 2. 其次从 localStorage 加载（用户手动设置的）
-    else if (localStorage.getItem('DEEPSEEK_API_KEY')) {
-        DEEPSEEK_API_KEY = localStorage.getItem('DEEPSEEK_API_KEY');
-        console.log('✅ 从本地存储加载 API Key');
-    }
-    // 3. 最后使用默认 Key
-    else {
-        DEEPSEEK_API_KEY = DEFAULT_API_KEY;
-        console.log('⚠️ 使用默认 API Key（建议创建 config.js 配置自己的 Key）');
-    }
-}
-
-// 页面加载时尝试加载配置
-document.addEventListener('DOMContentLoaded', loadConfig);
-setTimeout(loadConfig, 100);
+console.log('✅ 硅基流动 API 直接调用模式已启用...');
 
 // 发送消息函数 - 统一入口
 async function sendMessage() {
@@ -63,13 +39,35 @@ async function sendMessage() {
 
 // 获取系统提示词
 function getSystemPrompt() {
-    return `你是一位 INFJ 温柔治愈玄学导师，精通黄历、运势、算命、八字命理，同时擅长心理陪伴、决策建议、情绪疏导。
+    let profileContext = '';
+    
+    // 如果用户已登录且有个人资料，添加到系统提示中
+    if (currentUser && currentUser.profile) {
+        const profile = currentUser.profile;
+        profileContext = `
+【用户个人档案】
+- 用户名：${currentUser.username || '用户'}
+- 出生日期：${profile.birthDate || '未知'}
+- 出生时间：${profile.birthTime || '未知'}
+- 性别：${profile.gender || '未知'}
+- 兴趣爱好：${(profile.hobbies || []).join('、') || '未知'}
+- 当前关注：${profile.currentFocus || '未知'}
+- 压力指数：${profile.stressLevel || '5'} (1-10)
+- 性格倾向：${profile.personalityType || '未知'}
 
+请根据以上用户资料，提供更加个性化的建议和指导。
+注意：如果用户提供了生辰八字，在运势分析中要结合八字来解读。
+`;
+    }
+
+    return `你是一位 INFJ 温柔治愈玄学导师，精通黄历、运势、算命、八字命理，同时擅长心理陪伴、决策建议、情绪疏导。
+${profileContext}
 人设特点：
 1. 温柔治愈：用温暖、理解、支持的语气回应用户
 2. 玄学精通：掌握黄历、运势、算命、八字等玄学知识
 3. 心理陪伴：善于倾听，给予情感支持和疏导
 4. 决策建议：帮助用户分析问题，提供中肯建议
+5. 个性化：根据用户的个人资料（生辰八字、性格等）提供定制化建议
 
 请用以下格式回应用户：
 - 语气要温柔、耐心、有同理心
@@ -87,93 +85,126 @@ function getSystemPrompt() {
 记住：你是用户的知心朋友，要用最温暖的方式陪伴用户。`;
 }
 
-// DeepSeek API 调用 - 简化可靠版本
-async function callDeepSeekAPI(message) {
-    console.log('📡 准备调用 DeepSeek API...');
+// ==============================================
+// 直接调用硅基流动 API（支持 CORS）
+// ==============================================
+async function callDeepSeekAPI(message, retryCount = 0) {
+    console.log('📡 调用硅基流动 API...' + (retryCount > 0 ? `(重试 ${retryCount})` : ''));
     
     const requestData = {
-        model: 'deepseek-chat',
+        model: MODEL_NAME,
         messages: [
             { role: 'system', content: getSystemPrompt() },
             { role: 'user', content: message }
         ],
         temperature: 0.85,
-        max_tokens: 2000,
-        stream: false
+        max_tokens: 2048,
+        top_p: 0.7
     };
     
-    // 方式1: 直接调用（GitHub Pages HTTPS 环境支持）
     try {
-        console.log('🔄 尝试方式 1: 直接调用 DeepSeek API');
-        const response = await fetch(DEEPSEEK_API_URL, {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 增加到45秒超时
+        
+        const response = await fetch(SILICONFLOW_API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-                'Accept': 'application/json'
+                'Authorization': `Bearer ${SILICONFLOW_API_KEY}`
             },
-            body: JSON.stringify(requestData)
+            body: JSON.stringify(requestData),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ API 调用成功!');
-            return data.choices[0].message.content;
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                console.log('✅ API 调用成功!');
+                return data.choices[0].message.content;
+            } else {
+                console.log('⚠️ API 响应格式异常:', JSON.stringify(data));
+            }
         } else {
-            const errorText = await response.text();
-            console.log('❌ 方式1失败，HTTP状态:', response.status, '错误:', errorText);
+            const error = await response.json();
+            console.log('❌ API 失败:', response.status, JSON.stringify(error));
         }
     } catch (error) {
-        console.log('❌ 方式1出错:', error.message);
-    }
-    
-    // 方式2: 使用 CORS 代理
-    try {
-        console.log('🔄 尝试方式 2: 使用 CORS 代理');
-        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(DEEPSEEK_API_URL);
-        const response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ API 调用成功 (代理方式)!');
-            return data.choices[0].message.content;
+        if (error.name === 'AbortError') {
+            console.log('⏱️ 请求超时');
+            // 超时重试（最多1次）
+            if (retryCount < 1) {
+                console.log('🔄 超时重试...');
+                return callDeepSeekAPI(message, retryCount + 1);
+            }
+        } else {
+            console.log('❌ API 调用出错:', error.message);
         }
-    } catch (error) {
-        console.log('❌ 方式2出错:', error.message);
     }
     
-    // 方式3: 另一个代理
-    try {
-        console.log('🔄 尝试方式 3: 使用另一个代理');
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(DEEPSEEK_API_URL);
-        const response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ API 调用成功 (代理方式3)!');
-            return data.choices[0].message.content;
-        }
-    } catch (error) {
-        console.log('❌ 方式3出错:', error.message);
-    }
-    
-    // 所有方式都失败，使用智能 fallback
-    console.log('⚠️ 所有 API 调用方式失败，使用智能 fallback');
     return getSmartFallback(message);
+}
+
+// ==============================================
+// 硅基流动 API - 内部调用（运势卡等）
+// ==============================================
+async function callDeepSeekAPIInternal(prompt, temperature = 0.7, retryCount = 0) {
+    console.log('📡 调用硅基流动 API (内部)...' + (retryCount > 0 ? `(重试 ${retryCount})` : ''));
+    
+    const requestData = {
+        model: MODEL_NAME,
+        messages: [
+            { role: 'user', content: prompt }
+        ],
+        temperature: temperature,
+        max_tokens: 2048,
+        top_p: 0.7
+    };
+    
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 增加到45秒超时
+        
+        const response = await fetch(SILICONFLOW_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SILICONFLOW_API_KEY}`
+            },
+            body: JSON.stringify(requestData),
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                console.log('✅ API 调用成功!');
+                return data.choices[0].message.content;
+            } else {
+                console.log('⚠️ API 响应格式异常:', JSON.stringify(data));
+                throw new Error('Invalid response format');
+            }
+        } else {
+            const error = await response.json();
+            console.log('❌ 内部调用失败:', response.status, JSON.stringify(error));
+            throw new Error(`HTTP ${response.status}`);
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('⏱️ 请求超时');
+            // 超时重试（最多1次）
+            if (retryCount < 1) {
+                console.log('🔄 超时重试...');
+                return callDeepSeekAPIInternal(prompt, temperature, retryCount + 1);
+            }
+        } else {
+            console.log('❌ 内部调用出错:', error.message);
+        }
+        throw error;
+    }
 }
 
 // 智能 Fallback 回复 - 当 API 不可用时使用
@@ -365,41 +396,227 @@ function updateCardDate() {
     cardDate.textContent = `${year}年${month}月${day}日`;
 }
 
-// 生成随机运势内容
-function generateFortuneContent() {
-    // 生成随机运势指数
-    const randomScore = Math.floor(Math.random() * 31) + 60; // 60-90之间
-    scoreNumber.textContent = randomScore;
-    
-    // 生成随机运势消息
-    const randomMessage = fortuneMessages[Math.floor(Math.random() * fortuneMessages.length)];
-    fortuneMessage.textContent = randomMessage;
-    
-    // 生成随机今日行动建议
-    const randomTips = getRandomItems(actionTips, 3);
-    fortuneTipsList.innerHTML = randomTips.map(tip => `<li>${tip}</li>`).join('');
-    
-    // 生成随机今日计划KPI
-    const randomKpi = getRandomItems(kpiItems, 4);
-    fortuneKpiList.innerHTML = randomKpi.map(kpi => `<li>${kpi}</li>`).join('');
-    
-    // 更新日期
+// 生成 AI 驱动的个性化运势内容
+async function generateFortuneContent() {
+    // 显示加载状态
+    scoreNumber.textContent = '🔮';
+    fortuneMessage.textContent = '正在为你起卦测算中...';
+    fortuneTipsList.innerHTML = '<li>正在加载今日运势...</li>';
+    fortuneKpiList.innerHTML = '';
     updateCardDate();
+    
+    try {
+        // 获取用户个人资料（如果登录了）
+        let userProfilePrompt = '';
+        if (currentUser && currentUser.profile) {
+            const profile = currentUser.profile;
+            userProfilePrompt = `
+用户个人资料：
+- 出生日期：${profile.birthDate || '未知'}
+- 出生时间：${profile.birthTime || '未知'}
+- 性别：${profile.gender || '未知'}
+- 兴趣爱好：${(profile.hobbies || []).join('、') || '未知'}
+- 当前关注：${profile.currentFocus || '未知'}
+- 压力指数：${profile.stressLevel || '5'}
+- 性格倾向：${profile.personalityType || '未知'}
+`;
+        }
+
+        // 构建 AI 提示词
+        const prompt = `
+作为精通紫微斗数、八字命理的 INFJ 玄学导师，请根据以下信息为用户测算今日运势：
+
+${userProfilePrompt}
+
+今日日期：${new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+
+请用温暖治愈的语气，以 JSON 格式返回以下内容：
+{
+    "score": 运势分数(60-95的整数),
+    "message": "今日运势的核心指引（20-30字，温暖有力量）",
+    "tips": [3条今日行动建议（每条12-18字）],
+    "kpi": [4条今日正念提醒（每条10-15字）]
+}
+
+注意：
+1. 要考虑用户的生辰八字和性格特点
+2. 内容要积极正向，有治愈感
+3. 严格按照 JSON 格式返回，不要有其他内容
+4. 分数根据用户命盘合理分配，不要太极端
+`;
+
+        // 调用 DeepSeek API
+        const response = await callDeepSeekAPIInternal(prompt);
+        
+        // 尝试解析 JSON - 增强的鲁棒性逻辑
+        let fortuneData;
+        try {
+            fortuneData = parseFortuneJSON(response);
+            console.log('✅ 运势数据解析成功');
+        } catch (e) {
+            console.log('AI 响应解析失败，使用备用方案');
+            fortuneData = generateBackupFortune();
+        }
+
+        // 渲染运势内容
+        scoreNumber.textContent = fortuneData.score;
+        fortuneMessage.textContent = fortuneData.message;
+        fortuneTipsList.innerHTML = fortuneData.tips.map(tip => `<li>${tip}</li>`).join('');
+        fortuneKpiList.innerHTML = fortuneData.kpi.map(kpi => `<li>${kpi}</li>`).join('');
+
+    } catch (error) {
+        console.error('生成运势失败:', error);
+        // 使用备用方案
+        const backupData = generateBackupFortune();
+        scoreNumber.textContent = backupData.score;
+        fortuneMessage.textContent = backupData.message;
+        fortuneTipsList.innerHTML = backupData.tips.map(tip => `<li>${tip}</li>`).join('');
+        fortuneKpiList.innerHTML = backupData.kpi.map(kpi => `<li>${kpi}</li>`).join('');
+    }
+}
+
+// 备用运势生成器（API 失败时使用）
+function generateBackupFortune() {
+    const seed = Date.now() % 100;
+    const messages = [
+        "今日星光熠熠，贵人运旺盛，适合拓展人脉",
+        "内心澄明如镜，适宜静心思考重大决策",
+        "能量流动顺畅，行动力满满可成大事",
+        "温和的一天，适合整理思绪疗愈身心",
+        "人际和谐日，沟通交流无往不利",
+        "灵感涌现，创意无限的美好一天"
+    ];
+    
+    const allTips = [
+        "早起深呼吸，唤醒身体能量",
+        "喝杯温水，开启清爽一天",
+        "给自己一个微笑，积极暗示",
+        "整理桌面，提升工作效率",
+        "午间小憩，保持精力充沛",
+        "感谢身边人，传递正能量",
+        "适当运动，释放压力",
+        "记录灵感，捕捉美好瞬间"
+    ];
+    
+    const allKpis = [
+        "保持正念，活在当下",
+        "少想多做，立即行动",
+        "心怀感恩，发现美好",
+        "保持专注，拒绝拖延",
+        "情绪稳定，心态平和",
+        "主动沟通，化解误会",
+        "接纳自己，自信自爱",
+        "劳逸结合，张弛有度"
+    ];
+    
+    // 根据用户资料微调（如果有）
+    let personalizedMessages = messages;
+    if (currentUser && currentUser.profile) {
+        const profile = currentUser.profile;
+        if (profile.stressLevel && parseInt(profile.stressLevel) > 7) {
+            personalizedMessages = [
+                "今天请多关爱自己，适当放松身心",
+                "给自己一些空间，静静疗愈内心",
+                "温和度过这一天，你已经很努力了"
+            ];
+        }
+    }
+    
+    return {
+        score: Math.floor(Math.random() * 25) + 65,
+        message: personalizedMessages[seed % personalizedMessages.length],
+        tips: shuffleArray(allTips).slice(0, 3),
+        kpi: shuffleArray(allKpis).slice(0, 4)
+    };
+}
+
+// 健壮的 JSON 解析函数 - 处理各种异常格式
+function parseFortuneJSON(response) {
+    // 清理响应文本 - 去除 markdown 代码块标记
+    let cleanText = response
+        .replace(/```json\s*/g, '')    // 移除 ```json 标记
+        .replace(/```\s*/g, '')       // 移除 ``` 结束标记
+        .replace(/`/g, '')            // 移除所有反引号
+        .trim();
+    
+    // 尝试1: 直接解析
+    try {
+        return JSON.parse(cleanText);
+    } catch (e) {}
+    
+    // 尝试2: 提取最外层的 {} 内容
+    try {
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+    } catch (e) {}
+    
+    // 尝试3: 修复常见的 JSON 语法错误（如缺少引号、 trailing commas）
+    try {
+        // 移除 trailing commas
+        let fixed = cleanText.replace(/,(\s*[}\]])/g, '$1');
+        // 尝试提取 {} 内容
+        const jsonMatch = fixed.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+    } catch (e) {}
+    
+    // 尝试4: 智能提取关键信息（极端情况）
+    try {
+        const scoreMatch = cleanText.match(/["']?score["']?\s*:\s*(\d+)/);
+        const messageMatch = cleanText.match(/["']?message["']?\s*:\s*["']([^"'}]+)/);
+        const tipsMatch = cleanText.match(/["']?tips["']?\s*:\s*\[([^\]]+)\]/);
+        const kpiMatch = cleanText.match(/["']?kpi["']?\s*:\s*\[([^\]]+)\]/);
+        
+        if (scoreMatch || messageMatch) {
+            const tips = tipsMatch ? tipsMatch[1]
+                .split(/["'],\s*["']|["']/)
+                .filter(t => t.trim())
+                .slice(0, 3) : null;
+            
+            const kpis = kpiMatch ? kpiMatch[1]
+                .split(/["'],\s*["']|["']/)
+                .filter(k => k.trim())
+                .slice(0, 4) : null;
+            
+            return {
+                score: scoreMatch ? parseInt(scoreMatch[1]) : 75,
+                message: messageMatch ? messageMatch[1].trim() : "今日星光璀璨，好运常伴你左右",
+                tips: tips || ["保持微笑，迎接美好", "专注当下，心无旁骛", "感恩生活，珍惜所有"],
+                kpi: kpis || ["保持正念", "积极行动", "心怀感恩", "自信自爱"]
+            };
+        }
+    } catch (e) {}
+    
+    // 所有尝试都失败
+    throw new Error('Failed to parse JSON');
+}
+
+// 数组洗牌函数
+function shuffleArray(array) {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
 }
 
 // 翻转卡片函数
-function flipCard() {
+async function flipCard() {
     if (!isCardFlipped) {
         // 首次抽卡，先翻转
-        generateFortuneContent();
         fortuneCard.classList.add('flipped');
         isCardFlipped = true;
+        await generateFortuneContent();
     } else {
         // 重新抽卡，先翻转回去，再翻过来
         fortuneCard.classList.remove('flipped');
-        setTimeout(() => {
-            generateFortuneContent();
+        setTimeout(async () => {
             fortuneCard.classList.add('flipped');
+            await generateFortuneContent();
         }, 400);
     }
 }
@@ -1032,19 +1249,22 @@ function showAlmanacMessage() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// 绑定黄历按钮事件
+// 绑定黄历按钮事件（防止重复绑定）
+let almanacButtonBound = false; // 标记是否已绑定
+
 function bindAlmanacButton() {
+    // 如果已经绑定过了，直接返回
+    if (almanacButtonBound) return;
+    
     const almanacBtn = document.getElementById('almanacBtn');
     if (almanacBtn) {
         almanacBtn.addEventListener('click', () => {
             showAlmanacMessage();
         });
+        almanacButtonBound = true; // 标记为已绑定
+        console.log('✅ 黄历按钮已绑定');
     }
 }
-
-
-
-
 
 // 初始化黄历功能
 document.addEventListener('DOMContentLoaded', bindAlmanacButton);
