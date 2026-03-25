@@ -251,6 +251,23 @@ body::after {
     align-items: center;
     justify-content: center;
     z-index: 2;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 卡片背面滚动条 */
+.card-back::-webkit-scrollbar {
+    width: 6px;
+}
+
+.card-back::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.3);
+    border-radius: 3px;
+}
+
+.card-back::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.5);
+    border-radius: 3px;
 }
 
 .card-back-content {
@@ -319,6 +336,23 @@ body::after {
 .card-front {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 10, 60, 0.8) 100%);
     transform: rotateY(180deg);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 卡片正面滚动条 */
+.card-front::-webkit-scrollbar {
+    width: 6px;
+}
+
+.card-front::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.3);
+    border-radius: 3px;
+}
+
+.card-front::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.5);
+    border-radius: 3px;
 }
 
 .fortune-card::before {
@@ -385,6 +419,27 @@ body::after {
     padding: 25px;
     position: relative;
     z-index: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 卡片内容滚动条样式 */
+.card-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.card-content::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.3);
+    border-radius: 3px;
+}
+
+.card-content::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.5);
+    border-radius: 3px;
+}
+
+.card-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.7);
 }
 
 .fortune-score {
@@ -826,6 +881,7 @@ body::after {
 
     .fortune-card {
         min-height: 500px;
+        max-height: 75vh;
     }
 
     .chat-container {
