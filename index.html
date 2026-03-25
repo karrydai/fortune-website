@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绿老头 - INFJ人生导师</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 关于我的简短介绍 -->
+        <section class="intro-section">
+            <h1 class="intro-name">绿老头</h1>
+            <p class="intro-tagline">INFJ 人生导师 · 命理运势分析师</p>
+            <p class="intro-text">用心理学帮你理清选择，用命理给你具象答案，理性与灵性双修的人生规划师。</p>
+        </section>
+
+        <!-- 核心功能区域 -->
+        <div class="main-content">
+            <!-- 左侧运势卡区域 -->
+            <section class="fortune-card-section">
+                <h2 class="section-title">每日运势卡</h2>
+                <div class="fortune-card-wrapper">
+                    <div class="fortune-card" id="fortuneCard">
+                        <!-- 卡片背面 - 未抽卡时显示 -->
+                        <div class="card-back">
+                            <div class="card-back-content">
+                                <div class="card-back-icon">✨</div>
+                                <h3>今日运势</h3>
+                                <p>点击按钮抽取今日运势</p>
+                                <button class="draw-card-btn first-draw-btn">抽取运势</button>
+                            </div>
+                        </div>
+                        <!-- 卡片正面 - 抽卡后显示 -->
+                        <div class="card-front">
+                            <div class="card-header">
+                                <h3 class="card-title">今日运势</h3>
+                                <p class="card-date" id="cardDate">2026年3月18日</p>
+                            </div>
+                            <div class="card-content">
+                                <div class="fortune-score">
+                                    <span class="score-number" id="scoreNumber">85</span>
+                                    <span class="score-label">运势指数</span>
+                                </div>
+                                <div class="fortune-message">
+                                    <p id="fortuneText">今天你的能量较高，适合处理重要的决策和任务。建议将重点放在创造性工作上，会有不错的收获。</p>
+                                </div>
+                                <div class="fortune-tips">
+                                    <h4>今日行动建议</h4>
+                                    <ul id="tipsList">
+                                        <li>保持积极的心态，迎接新的挑战</li>
+                                        <li>多与他人交流，可能会获得新的机会</li>
+                                        <li>注意休息，保持良好的精神状态</li>
+                                    </ul>
+                                </div>
+                                <div class="fortune-kpi">
+                                    <h4>今日计划 KPI</h4>
+                                    <ul id="kpiList">
+                                        <li>完成一件重要的任务</li>
+                                        <li>花15分钟冥想或反思</li>
+                                        <li>与至少一个朋友或同事交流</li>
+                                        <li>确保充足的休息和水分摄入</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="draw-card-btn">重新抽卡</button>
+                                <button class="send-to-chat-btn">发送到聊天</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧聊天区域 -->
+            <section class="chat-section">
+                <h2 class="section-title">数字分身聊天</h2>
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                    <div class="message bot-message">
+                <div class="message-avatar">
+                    <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=wise%20old%20man%20with%20green%20hues%2C%20serene%20expression%2C%20mystical%20aura%2C%20soft%20lighting%2C%20digital%20art%20style&image_size=square_hd" alt="绿老头" class="bot-avatar">
+                </div>
+                <div class="message-content">
+                    <p>你好，我是绿老头的数字分身。我可以帮你分析人生决策、预测事件结果、提供每日运势指引。请问有什么可以帮助你的？</p>
+                </div>
+            </div>
+                </div>
+                    <div class="chat-quick-buttons">
+                        <button class="quick-btn" id="almanacBtn">📅 查看今日黄历</button>
+                    </div>
+                    <div class="chat-input">
+                        <div class="user-avatar-container">
+                            <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=simple%20user%20avatar%2C%20placeholder%2C%20minimal%20style&image_size=square" alt="用户" class="user-avatar" id="userAvatar">
+                            <input type="file" id="avatarUpload" accept="image/*" class="avatar-upload">
+                        </div>
+                        <input type="text" id="userInput" placeholder="请输入你的问题...（输入'黄历'、'今日运势'查看详情）" class="input-field">
+                        <button id="sendButton" class="send-button">发送</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 登录/注册模态框 -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">&times;</button>
+            
+            <!-- 登录表单 -->
+            <div class="auth-form" id="loginForm">
+                <h2 class="auth-title">欢迎回来</h2>
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="loginUsername" placeholder="请输入用户名" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码" class="form-input">
+                </div>
+                <button class="auth-btn" id="loginBtn">登录</button>
+                <p class="auth-switch">还没有账号？<a href="#" id="goToRegister">立即注册</a></p>
+            </div>
+
+            <!-- 注册表单 -->
+            <div class="auth-form hidden" id="registerForm">
+                <h2 class="auth-title">创建账号</h2>
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="registerUsername" placeholder="请输入用户名" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="registerPassword" placeholder="请输入密码" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>确认密码</label>
+                    <input type="password" id="confirmPassword" placeholder="请再次输入密码" class="form-input">
+                </div>
+                <button class="auth-btn" id="registerBtn">下一步 - 填写心理画像</button>
+                <p class="auth-switch">已有账号？<a href="#" id="goToLogin">立即登录</a></p>
+            </div>
+
+            <!-- 心理画像调查问卷 -->
+            <div class="auth-form hidden" id="surveyForm">
+                <h2 class="auth-title">心理画像调查问卷</h2>
+                <p class="survey-desc">为了更好地了解你，提供更精准的人生建议，请填写以下问卷（约5-10分钟）</p>
+                
+                <div class="survey-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="progress-text">第 <span id="currentStep">1</span> / 6 页</p>
+                </div>
+
+                <!-- 第1页：基本信息 -->
+                <div class="survey-page" id="surveyPage1">
+                    <div class="form-group">
+                        <label>出生日期</label>
+                        <input type="date" id="birthDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>出生时间（可选）</label>
+                        <input type="time" id="birthTime" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>性别</label>
+                        <select id="gender" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="male">男</option>
+                            <option value="female">女</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                    <button class="survey-next-btn" data-next="2">下一页</button>
+                </div>
+
+                <!-- 第2页：兴趣爱好 -->
+                <div class="survey-page hidden" id="surveyPage2">
+                    <div class="form-group">
+                        <label>你的兴趣爱好（可多选）</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item"><input type="checkbox" value="阅读"> 阅读</label>
+                            <label class="checkbox-item"><input type="checkbox" value="运动"> 运动</label>
+                            <label class="checkbox-item"><input type="checkbox" value="音乐"> 音乐</label>
+                            <label class="checkbox-item"><input type="checkbox" value="旅行"> 旅行</label>
+                            <label class="checkbox-item"><input type="checkbox" value="艺术"> 艺术创作</label>
+                            <label class="checkbox-item"><input type="checkbox" value="科技"> 科技</label>
+                            <label class="checkbox-item"><input type="checkbox" value="美食"> 美食烹饪</label>
+                            <label class="checkbox-item"><input type="checkbox" value="社交"> 社交活动</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>最感兴趣的话题</label>
+                        <select id="interestTopic" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="career">职业发展</option>
+                            <option value="relationship">人际关系</option>
+                            <option value="health">身心健康</option>
+                            <option value="finance">财务规划</option>
+                            <option value="spiritual">精神成长</option>
+                        </select>
+                    </div>
+                    <button class="survey-prev-btn" data-prev="1">上一页</button>
+                    <button class="survey-next-btn" data-next="3">下一页</button>
+                </div>
+
+                <!-- 第3页：心理导向 -->
+                <div class="survey-page hidden" id="surveyPage3">
+                    <div class="form-group">
+                        <label>遇到困难时，你通常会？</label>
+                        <select id="difficultyResponse" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="analysis">先分析问题再行动</option>
+                            <option value="emotion">先处理情绪再面对</option>
+                            <option value="action">立刻采取行动解决</option>
+                            <option value="seek">寻求他人帮助</option>
+                            <option value="avoid">暂时逃避冷静思考</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>做决策时，你更依赖？</label>
+                        <select id="decisionStyle" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="logic">逻辑分析和数据</option>
+                            <option value="intuition">直觉和内心感受</option>
+                            <option value="experience">过往经验</option>
+                            <option value="advice">他人建议</option>
+                            <option value="balance">平衡各方面因素</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>你认为自己更偏向？</label>
+                        <select id="personalityType" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="introvert">内向型 - 喜欢独处思考</option>
+                            <option value="extrovert">外向型 - 善于社交表达</option>
+                            <option value="ambivert">中间型 - 视情况而定</option>
+                        </select>
+                    </div>
+                    <button class="survey-prev-btn" data-prev="2">上一页</button>
+                    <button class="survey-next-btn" data-next="4">下一页</button>
+                </div>
+
+                <!-- 第4页：生活目标 -->
+                <div class="survey-page hidden" id="surveyPage4">
+                    <div class="form-group">
+                        <label>目前最关注的是？</label>
+                        <select id="currentFocus" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="career">事业发展</option>
+                            <option value="relationship">感情婚姻</option>
+                            <option value="family">家庭责任</option>
+                            <option value="self">自我提升</option>
+                            <option value="health">健康养生</option>
+                            <option value="finance">财富积累</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>短期目标（1年内）</label>
+                        <textarea id="shortTermGoal" class="form-input form-textarea" placeholder="请描述你未来一年的主要目标..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>长期愿景（5年以上）</label>
+                        <textarea id="longTermGoal" class="form-input form-textarea" placeholder="请描述你对未来的愿景..."></textarea>
+                    </div>
+                    <button class="survey-prev-btn" data-prev="3">上一页</button>
+                    <button class="survey-next-btn" data-next="5">下一页</button>
+                </div>
+
+                <!-- 第5页：困扰与压力 -->
+                <div class="survey-page hidden" id="surveyPage5">
+                    <div class="form-group">
+                        <label>目前最大的困扰来源？</label>
+                        <select id="stressSource" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="work">工作/学业压力</option>
+                            <option value="relation">人际关系</option>
+                            <option value="finance">经济压力</option>
+                            <option value="health">健康问题</option>
+                            <option value="future">未来迷茫</option>
+                            <option value="family">家庭问题</option>
+                            <option value="none">没有明显困扰</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>压力值（0-10分）</label>
+                        <input type="range" id="stressLevel" min="0" max="10" value="5" class="slider-input">
+                        <span class="slider-value">5</span>
+                    </div>
+                    <div class="form-group">
+                        <label>睡眠质量</label>
+                        <select id="sleepQuality" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="good">很好 - 精力充沛</option>
+                            <option value="normal">一般 - 基本满足</option>
+                            <option value="poor">较差 - 经常失眠</option>
+                            <option value="irregular">不规律 - 作息混乱</option>
+                        </select>
+                    </div>
+                    <button class="survey-prev-btn" data-prev="4">上一页</button>
+                    <button class="survey-next-btn" data-next="6">下一页</button>
+                </div>
+
+                <!-- 第6页：补充信息 -->
+                <div class="survey-page hidden" id="surveyPage6">
+                    <div class="form-group">
+                        <label>对命理的态度</label>
+                        <select id="divinationAttitude" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="believe">深信不疑 - 重要参考</option>
+                            <option value="curious">抱有好奇 - 适度参考</option>
+                            <option value="entertainment">娱乐心态 - 仅供消遣</option>
+                            <option value="skeptical">保持怀疑 - 更信科学</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>最想获得哪方面的建议？</label>
+                        <select id="adviceType" class="form-input">
+                            <option value="">请选择</option>
+                            <option value="career">事业抉择</option>
+                            <option value="love">感情婚恋</option>
+                            <option value="interpersonal">人际相处</option>
+                            <option value="self_growth">自我成长</option>
+                            <option value="fortune">运势分析</option>
+                            <option value="health">健康建议</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>还有什么想告诉我们？（可选）</label>
+                        <textarea id="additionalInfo" class="form-input form-textarea" placeholder="任何你觉得重要的信息..."></textarea>
+                    </div>
+                    <button class="survey-prev-btn" data-prev="5">上一页</button>
+                    <button class="auth-btn" id="completeSurvey">完成注册</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户信息显示 -->
+    <div class="user-info hidden" id="userInfo">
+        <span class="welcome-text">欢迎，<span id="displayUsername">用户</span></span>
+        <button class="logout-btn" id="logoutBtn">退出</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
